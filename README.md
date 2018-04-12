@@ -1,5 +1,5 @@
-graph-viz-svg-inliner
-=====================
+graphviz-svg-inliner
+====================
 
 Exports a graphviz-file to a SVG and inlines the referenced CSS.
 
