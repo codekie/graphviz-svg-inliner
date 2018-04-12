@@ -1,0 +1,6 @@
+*.log
+*.lock
+.idea
+/.nyc_output
+/coverage
+/node_modules
