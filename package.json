@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "",
   "main": "index.js",
+  "bin": {
+    "graphviz-svg-inliner": "bin/graphviz-svg-inliner"
+  },
   "engines": {
     "node": "6.x.x",
     "npm": "5.x.x"
