@@ -1,6 +1,6 @@
 {
   "name": "graphviz-svg-inliner",
-  "version": "0.1.3",
+  "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "bin": {
