@@ -17,16 +17,28 @@ function run() {
         .description('Exports a graphviz-file to a SVG and inlines the referenced CSS. If filepath is' +
             ' omitted, stdin will be used, instead.')
         .option('-o, --output-filepath <filepath>', 'Filepath to output-SVG')
+        .option('-a, --add-stylesheet <filepath>', 'Filepath to stylesheet, which shall be included as well',
+            (file, files) => {
+                files.push(file);
+                return files;
+            }, [])
         .action(_processAction);
     program.parse(process.argv);
 }
 
 async function _processAction(filepath, options) {
     const { outputFilepath } = options;
-    if (filepath) {
-        createSvgFromFile(filepath, { outputFilepath });
-    } else {
-        createSvgFromString(await getStdin() , outputFilepath);
+    let { addStylesheet: filepathsSyleSheets } = options;
+    if (filepathsSyleSheets && !Array.isArray(filepathsSyleSheets)) {
+        filepathsSyleSheets = [filepathsSyleSheets];
+    }
+    try {
+        filepath
+            ? createSvgFromFile(filepath, { outputFilepath, filepathsSyleSheets })
+            : createSvgFromString(await getStdin() , outputFilepath, { filepathsSyleSheets });
+        console.log(`Wrote file to ${ outputFilepath }`);
+    } catch(e) {
+        console.log(e);
     }
     process.exit(0);
 }

@@ -24,35 +24,39 @@ module.exports = {
 
 /**
  * Creates an SVG based on a graphviz-file and inlines the css-file if one has been set in the `.gv`-file
- * @param {String} filePathGraph                        File-path to the graph-file
- * @param {String} [encodingGraph=utf8]                 Encoding of the graph-file
- * @param {String} [encodingCss=utf8]                   Encoding of the CSS-file
- * @param {String} [outputFilepath]                     File-path where the SVG will be written to. If this parameter
- *                                                      is not set, the output-file-path will be the same as the
- *                                                      `filePathGraph`. The file-suffix will be replaced with `.svg`
+ * @param {String} filePathGraph            File-path to the graph-file
+ * @param {String} [encodingGraph=utf8]     Encoding of the graph-file
+ * @param {String} [encodingCss=utf8]       Encoding of the CSS-file
+ * @param {String} [outputFilepath]         File-path where the SVG will be written to. If this parameter is not set,
+ *                                          the output-file-path will be the same as the `filePathGraph`. The
+ *                                          file-suffix will be replaced with `.svg`
+ * @param {String[]} [filepathsSyleSheets]  File-paths to other CSS-files, which additionally shall be included
  */
 function createSvgFromFile(filePathGraph, {
     encodingGraph = DEFAULT__ENCODING,
     encodingCss = DEFAULT__ENCODING,
-    outputFilepath = _createDefaultOutputFilepath(filePathGraph)
+    outputFilepath = _createDefaultOutputFilepath(filePathGraph),
+    filepathsSyleSheets
 } = {}) {
     const strGraph = fs.readFileSync(filePathGraph, encodingGraph),
         svgGraph = vizjs(strGraph),
-        enhancedSvg = _enhanceSvg(svgGraph, path.dirname(filePathGraph), encodingCss);
+        enhancedSvg = _enhanceSvg(svgGraph, path.dirname(filePathGraph), encodingCss, { filepathsSyleSheets });
     _writeSvg(enhancedSvg, outputFilepath);
 }
 
 /**
  * Creates an SVG based on a graphviz-string and inlines the css-file if one has been set
- * @param {String} strGraph             Graphviz-string
- * @param {String} outputFilepath       File-path where the SVG will be written to.
- * @param {String} [encodingCss=utf8]   Encoding of the CSS-file
+ * @param {String} strGraph                 Graphviz-string
+ * @param {String} outputFilepath           File-path where the SVG will be written to.
+ * @param {String} [encodingCss=utf8]       Encoding of the CSS-file
+ * @param {String[]} [filepathsSyleSheets]  File-paths to other CSS-files, which additionally shall be included
  */
 function createSvgFromString(strGraph, outputFilepath, {
-    encodingCss = DEFAULT__ENCODING
+    encodingCss = DEFAULT__ENCODING,
+    filepathsSyleSheets
 } = {}) {
     const svgGraph = vizjs(strGraph),
-        enhancedSvg = _enhanceSvg(svgGraph, path.dirname(outputFilepath), encodingCss);
+        enhancedSvg = _enhanceSvg(svgGraph, path.dirname(outputFilepath), encodingCss, { filepathsSyleSheets });
     _writeSvg(enhancedSvg, outputFilepath);
 }
 
@@ -60,36 +64,56 @@ function createSvgFromString(strGraph, outputFilepath, {
 
 /**
  * Enhance the raw SVG (eg. inlining CSS)
- * @param {String} svgGraph     The SVG as String
- * @param {String} pathGraph    The path to the graph-file
- * @param {String} encodingCss  The encoding of the potentially referenced CSS
+ * @param {String} svgGraph                 The SVG as String
+ * @param {String} pathGraph                The path to the graph-file
+ * @param {String} encodingCss              The encoding of the potentially referenced CSS
+ * @param {String[]} [filepathsSyleSheets]  File-paths to other CSS-files, which additionally shall be included
  * @returns {String} The enhanced SVG
  * @private
  */
-function _enhanceSvg(svgGraph, pathGraph, encodingCss) {
-    return [svgGraph]   // Monad.. just in case that there are more enhancements to come
-        .map(svgGraph => _inlineCSS(svgGraph, pathGraph, encodingCss))
-        [0];
+function _enhanceSvg(svgGraph, pathGraph, encodingCss, { filepathsSyleSheets }) {
+    let result = svgGraph;
+    if (filepathsSyleSheets) {
+        filepathsSyleSheets.slice().reverse().forEach((filepathStyleSheet) => {
+            result = _inlineCSS(result, filepathStyleSheet, encodingCss);
+        });
+    }
+    const inlineFilePathCss = _extractFilepathToCssFromGraph(svgGraph);
+    if (!inlineFilePathCss) {
+        return result;
+    }
+    const filePathCss = path.join(pathGraph, inlineFilePathCss);
+    return _inlineCSS(result, filePathCss, encodingCss);
+}
+
+/**
+ * Extracts the relative file-path to the CSS, from the graph
+ * @param {String} svgGraph     The graph as string
+ * @returns {null|string}       The relative path to the CSS, if existing
+ * @private
+ */
+function _extractFilepathToCssFromGraph(svgGraph) {
+    const regexResultExternalCss = svgGraph.match(REGEX__EXTERNAL_CSS);
+    if (!regexResultExternalCss) { return null; }  // No reference to external CSS-file
+    return regexResultExternalCss[1];
 }
 
 /**
  * Inlines the potentially referenced CSS into the SVG
- * @param {String} svgGraph     The SVG as String
- * @param {String} pathGraph    The path to the graph-file
- * @param {String} encodingCss  The encoding of the potentially referenced CSS
- * @returns {String} The SVG with the inlined CSS-file
+ * @param {String}      svgGraph     The SVG as String
+ * @param {String|null} filePathCss  The path to the CSS-file
+ * @param {String}      encodingCss  The encoding of the potentially referenced CSS
+ * @returns {String}    The SVG with the inlined CSS-file
  * @private
  */
-function _inlineCSS(svgGraph, pathGraph, encodingCss) {
-    const regexResultExternalCss = svgGraph.match(REGEX__EXTERNAL_CSS);
-    if (!regexResultExternalCss) { return svgGraph; }  // No reference to external CSS-file
-    const relativeFilePathCss = regexResultExternalCss[1],
-        strippedStyleTagFromSvg = svgGraph.replace(REGEX__EXTERNAL_CSS, ''),
+function _inlineCSS(svgGraph, filePathCss, encodingCss) {
+    if (!filePathCss) { return svgGraph; }  // No reference to external CSS-file
+    const strippedStyleTagFromSvg = svgGraph.replace(REGEX__EXTERNAL_CSS, ''),
         regexResultSvgTag = REGEX__SVG_TAG.exec(strippedStyleTagFromSvg),
         idxAfterSvgTag = regexResultSvgTag.index + regexResultSvgTag[0].length,
         preStyleTag = strippedStyleTagFromSvg.substring(0, idxAfterSvgTag),
         postStyleTag = strippedStyleTagFromSvg.substring(idxAfterSvgTag);
-    return `${ preStyleTag }${ _createStyleTag(pathGraph, relativeFilePathCss, encodingCss) }${postStyleTag}`;
+    return `${ preStyleTag }${ _createStyleTag(filePathCss, encodingCss) }${postStyleTag}`;
 }
 
 /**
@@ -105,15 +129,13 @@ function _createDefaultOutputFilepath(filePathGraph) {
 
 /**
  * Creates an inline-style-tag for SVG, with the included CSS.
- * @param {String} pathGraph        The path to the graph-file
- * @param {String} relFilePathCss   The relative path to the CSS-file (based on the graph-file)
+ * @param {String} filePathCss      The relative path to the CSS-file
  * @param {String} encodingCss      The encoding of the potentially referenced CSS
  * @returns {String} Style-tag
  * @private
  */
-function _createStyleTag(pathGraph, relFilePathCss, encodingCss) {
-    const filePathCss = path.join(pathGraph, relFilePathCss),
-        css = fs.readFileSync(filePathCss, encodingCss);
+function _createStyleTag(filePathCss, encodingCss) {
+    const css = fs.readFileSync(filePathCss, encodingCss);
     //language=XML (required for WebStorm, to suppress error)
     return `<style type="text/css" ><![CDATA[
         ${ css }
@@ -128,5 +150,4 @@ function _createStyleTag(pathGraph, relFilePathCss, encodingCss) {
  */
 function _writeSvg(svg, filePathOutput) {
     fs.writeFileSync(filePathOutput, svg);
-    console.log(`Wrote file to ${ filePathOutput }`);
 }
