@@ -7,8 +7,8 @@
     "graphviz-svg-inliner": "bin/graphviz-svg-inliner"
   },
   "engines": {
-    "node": "6.x.x",
-    "npm": "5.x.x"
+    "node": ">=8.0.0",
+    "npm": ">=6.0.0"
   },
   "scripts": {
     "release": "standard-version -a",
