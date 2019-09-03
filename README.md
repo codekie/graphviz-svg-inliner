@@ -11,3 +11,9 @@ Usage
 ```
 graphviz-svg-inliner -o ./inlined-graph.svg ./docs/graph.gv
 ```
+
+To add additional stylesheets, use the `-a` option
+
+```
+graphviz-svg-inliner -o ./inlined-graph.svg -a ./docs/styles/additional-style.css ./docs/graph.gv
+```
