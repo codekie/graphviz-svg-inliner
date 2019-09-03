@@ -13,7 +13,10 @@ const DEFAULT__ENCODING = 'utf8',
 
 // PUBLIC API
 
-module.exports = createSvg;
+module.exports = {
+    createSvgFromFile,
+    createSvgFromString
+};
 
 // IMPLEMENTATION DETAILS
 
@@ -28,7 +31,7 @@ module.exports = createSvg;
  *                                                      is not set, the output-file-path will be the same as the
  *                                                      `filePathGraph`. The file-suffix will be replaced with `.svg`
  */
-function createSvg(filePathGraph, {
+function createSvgFromFile(filePathGraph, {
     encodingGraph = DEFAULT__ENCODING,
     encodingCss = DEFAULT__ENCODING,
     outputFilepath = _createDefaultOutputFilepath(filePathGraph)
@@ -36,6 +39,20 @@ function createSvg(filePathGraph, {
     const strGraph = fs.readFileSync(filePathGraph, encodingGraph),
         svgGraph = vizjs(strGraph),
         enhancedSvg = _enhanceSvg(svgGraph, path.dirname(filePathGraph), encodingCss);
+    _writeSvg(enhancedSvg, outputFilepath);
+}
+
+/**
+ * Creates an SVG based on a graphviz-string and inlines the css-file if one has been set
+ * @param {String} strGraph             Graphviz-string
+ * @param {String} outputFilepath       File-path where the SVG will be written to.
+ * @param {String} [encodingCss=utf8]   Encoding of the CSS-file
+ */
+function createSvgFromString(strGraph, outputFilepath, {
+    encodingCss = DEFAULT__ENCODING
+} = {}) {
+    const svgGraph = vizjs(strGraph),
+        enhancedSvg = _enhanceSvg(svgGraph, path.dirname(outputFilepath), encodingCss);
     _writeSvg(enhancedSvg, outputFilepath);
 }
 
