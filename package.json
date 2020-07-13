@@ -27,6 +27,6 @@
     "viz.js": "1.8.1"
   },
   "devDependencies": {
-    "standard-version": "4.3.0"
+    "standard-version": "8.0.1"
   }
 }
