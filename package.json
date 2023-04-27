@@ -1,14 +1,14 @@
 {
   "name": "graphviz-svg-inliner",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "",
   "main": "index.js",
   "bin": {
     "graphviz-svg-inliner": "bin/graphviz-svg-inliner"
   },
   "engines": {
-    "node": ">=8.0.0",
-    "npm": ">=6.0.0"
+    "node": "*",
+    "npm": "*"
   },
   "scripts": {
     "release": "standard-version -a",
